@@ -1,3 +1,4 @@
+# app/main.py
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -5,12 +6,13 @@ from fastapi.responses import JSONResponse
 from app.database import engine
 from app.models import Base
 from app.routers import user, cabinet, patient
+from app.routers.appointments import router as agenda_router   # ← AJOUT SPRINT 2
 
 
 app = FastAPI()
 
 
-# ── Middleware custom CORS (force les headers sur TOUTES les réponses) ──
+# ── Middleware CORS ──
 @app.middleware("http")
 async def cors_middleware(request: Request, call_next):
     if request.method == "OPTIONS":
@@ -26,11 +28,10 @@ async def cors_middleware(request: Request, call_next):
     return response
 
 
-# ── CORSMiddleware FastAPI (double protection) ──
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=False,   
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -41,6 +42,7 @@ Base.metadata.create_all(bind=engine)
 app.include_router(user.router)
 app.include_router(cabinet.router)
 app.include_router(patient.router)
+app.include_router(agenda_router)    # ← AJOUT SPRINT 2
 
 
 @app.get("/")

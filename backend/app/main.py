@@ -7,6 +7,7 @@ from app.database import engine
 from app.models import Base
 from app.routers import user, cabinet, patient
 from app.routers.appointments import router as agenda_router   # ← AJOUT SPRINT 2
+from app.routers.gestion_rdv import router as gestion_rdv_router  # ← MEMBRE 2
 
 
 app = FastAPI()
@@ -43,6 +44,7 @@ app.include_router(user.router)
 app.include_router(cabinet.router)
 app.include_router(patient.router)
 app.include_router(agenda_router)    # ← AJOUT SPRINT 2
+app.include_router(gestion_rdv_router)  # ← MEMBRE 2
 
 
 @app.get("/")

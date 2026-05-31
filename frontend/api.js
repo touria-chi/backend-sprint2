@@ -85,7 +85,7 @@ export const adminAPI = {
 
   // Création d'un ophtalmologue par l'admin
   create: (data) =>
-    fetch(`${BASE_URL}/users/admin-create`, {
+    fetch(`${BASE_URL}/users/create-admin`, {
       method: "POST",
       headers: getHeaders(),
       body: JSON.stringify(data),

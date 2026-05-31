@@ -15,6 +15,7 @@ from app.schemas.appointment import (
     PlageHoraireOut,
 )
 from app.utils.slots import get_available_slots
+from app.utils.email import send_confirmation_email
 
 router = APIRouter(prefix="/agenda", tags=["Agenda numérique"])
 
@@ -193,5 +194,25 @@ def create_appointment(
     creneau.statut_affichage = "COMPLET"
     db.commit()
     db.refresh(rdv)
+
+    # ── Envoi email de confirmation avec liens modifier/annuler ──
+    try:
+        from app.models import User
+        medecin = db.query(User).filter(User.id == rdv.ophtalmologue_id).first()
+        medecin_nom = f"Dr. {medecin.prenom} {medecin.nom}" if medecin else "Votre medecin"
+
+        send_confirmation_email(
+            to_email=rdv.email_contact,
+            nom_patient=rdv.nom_patient,
+            prenom_patient=rdv.prenom_patient,
+            date_rdv=str(creneau.date),
+            heure_rdv=str(creneau.heure_debut)[:5],
+            medecin_nom=medecin_nom,
+            token_modification=rdv.token_modification,
+            cancel_token=rdv.cancel_token,
+        )
+    except Exception as e:
+        # L'email ne doit PAS faire echouer la reservation
+        print(f"[EMAIL] Erreur envoi confirmation : {e}")
 
     return rdv

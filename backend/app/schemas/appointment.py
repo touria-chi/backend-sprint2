@@ -112,3 +112,50 @@ class AppointmentResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+# ─────────────────────────────────────────────────────
+# Membre 2 — Annulation & Modification
+# ─────────────────────────────────────────────────────
+
+class AppointmentDetail(BaseModel):
+    """Réponse GET /appointments/{token}"""
+    id: str
+    nom_patient: Optional[str]
+    prenom_patient: Optional[str]
+    email_contact: Optional[str]
+    telephone: Optional[str]
+    statut: str
+    source: str
+    motif: Optional[str]
+    token_expires_at: Optional[datetime]
+    created_at: datetime
+    # infos créneau
+    creneau_id: str
+
+    class Config:
+        from_attributes = True
+
+
+class AppointmentModify(BaseModel):
+    """Body PUT /appointments/{token}/modifier"""
+    nouveau_creneau_id: str
+
+
+class AppointmentModifyResponse(BaseModel):
+    """Réponse PUT /appointments/{token}/modifier"""
+    id: str
+    creneau_id: str
+    statut: str
+    token_expires_at: Optional[datetime]
+    nom_patient: Optional[str]
+    prenom_patient: Optional[str]
+
+    class Config:
+        from_attributes = True
+
+
+class AnnulationResponse(BaseModel):
+    """Réponse DELETE /appointments/{token}/annuler"""
+    message: str
+    rdv_id: str
+    statut: str

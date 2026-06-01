@@ -18,7 +18,6 @@ from app.utils.slots import get_available_slots
 from app.utils.email import send_confirmation_email
 
 router = APIRouter(prefix="/agenda", tags=["Agenda numérique"])
-
 @router.post(
     "/plages-horaires",
     response_model=PlageHoraireOut,
@@ -197,9 +196,14 @@ def create_appointment(
 
     # ── Envoi email de confirmation avec liens modifier/annuler ──
     try:
-        from app.models import User
+        from app.models import User, CabinetMedical
         medecin = db.query(User).filter(User.id == rdv.ophtalmologue_id).first()
-        medecin_nom = f"Dr. {medecin.prenom} {medecin.nom}" if medecin else "Votre medecin"
+        medecin_nom = f"Dr {medecin.prenom} {medecin.nom}" if medecin else "Votre médecin"
+        cabinet = None
+        if medecin and medecin.cabinet_id:
+            cabinet = db.query(CabinetMedical).filter(
+                CabinetMedical.id == str(medecin.cabinet_id)
+            ).first()
 
         send_confirmation_email(
             to_email=rdv.email_contact,
@@ -210,6 +214,7 @@ def create_appointment(
             medecin_nom=medecin_nom,
             token_modification=rdv.token_modification,
             cancel_token=rdv.cancel_token,
+            cabinet_nom=cabinet.nom if cabinet else None,
         )
     except Exception as e:
         # L'email ne doit PAS faire echouer la reservation

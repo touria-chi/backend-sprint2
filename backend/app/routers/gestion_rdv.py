@@ -14,11 +14,12 @@ from datetime import datetime, timedelta
 from app.database import get_db
 from app.models import RendezVous, Creneau
 from app.schemas.appointment import (
-    AppointmentDetail,
+    AppointmentDetailResponse,
     AppointmentModify,
     AppointmentModifyResponse,
     AnnulationResponse,
 )
+from app.utils.email import send_modification_email, send_cancellation_email
 
 router = APIRouter(prefix="/agenda", tags=["Gestion Rendez-vous"])
 
@@ -70,7 +71,7 @@ def get_rdv_or_raise(token: str, db: Session, check_expiry: bool = True) -> Rend
 
 @router.get(
     "/appointments/{token}",
-    response_model=AppointmentDetail,
+    response_model=AppointmentDetailResponse,
     summary="Récupérer les infos d'un RDV via token",
     description=(
         "Retourne les informations du rendez-vous associé au token "
@@ -85,7 +86,14 @@ def get_appointment_by_token(
     # GET : on ne vérifie pas l'expiry pour que le patient
     # puisse quand même voir son RDV même si les liens sont expirés
     rdv = get_rdv_or_raise(token, db, check_expiry=False)
-    return rdv
+    creneau = db.query(Creneau).filter(Creneau.id == rdv.creneau_id).first()
+
+    response = AppointmentDetailResponse.model_validate(rdv)
+    if creneau:
+        response.rdv_date = creneau.date
+        response.heure_debut = creneau.heure_debut
+        response.heure_fin = creneau.heure_fin
+    return response
 
 
 # ─────────────────────────────────────────────────────
@@ -157,6 +165,31 @@ def modifier_appointment(
     db.commit()
     db.refresh(rdv)
 
+    # ── Envoi email de modification ──
+    try:
+        from app.models import User, CabinetMedical
+        medecin = db.query(User).filter(User.id == rdv.ophtalmologue_id).first()
+        medecin_nom = f"Dr {medecin.prenom} {medecin.nom}" if medecin else "Votre médecin"
+        cabinet = None
+        if medecin and medecin.cabinet_id:
+            cabinet = db.query(CabinetMedical).filter(
+                CabinetMedical.id == str(medecin.cabinet_id)
+            ).first()
+
+        send_modification_email(
+            to_email=rdv.email_contact,
+            nom_patient=rdv.nom_patient,
+            prenom_patient=rdv.prenom_patient,
+            date_rdv=str(nouveau_creneau.date),
+            heure_rdv=str(nouveau_creneau.heure_debut)[:5],
+            medecin_nom=medecin_nom,
+            token_modification=rdv.token_modification,
+            cancel_token=rdv.cancel_token,
+            cabinet_nom=cabinet.nom if cabinet else None,
+        )
+    except Exception as e:
+        print(f"[EMAIL] Erreur envoi modification : {e}")
+
     return rdv
 
 
@@ -198,6 +231,29 @@ def annuler_appointment(
     rdv.statut = "ANNULE"
 
     db.commit()
+
+    # ── Envoi email d'annulation ──
+    try:
+        from app.models import User, CabinetMedical
+        medecin = db.query(User).filter(User.id == rdv.ophtalmologue_id).first()
+        medecin_nom = f"Dr {medecin.prenom} {medecin.nom}" if medecin else "Votre médecin"
+        cabinet = None
+        if medecin and medecin.cabinet_id:
+            cabinet = db.query(CabinetMedical).filter(
+                CabinetMedical.id == str(medecin.cabinet_id)
+            ).first()
+
+        send_cancellation_email(
+            to_email=rdv.email_contact,
+            nom_patient=rdv.nom_patient,
+            prenom_patient=rdv.prenom_patient,
+            date_rdv=str(creneau.date) if creneau else "",
+            heure_rdv=str(creneau.heure_debut)[:5] if creneau else "",
+            medecin_nom=medecin_nom,
+            cabinet_nom=cabinet.nom if cabinet else None,
+        )
+    except Exception as e:
+        print(f"[EMAIL] Erreur envoi annulation : {e}")
 
     return AnnulationResponse(
         message="Rendez-vous annulé avec succès",

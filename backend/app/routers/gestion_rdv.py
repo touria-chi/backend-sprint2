@@ -103,10 +103,12 @@ def get_appointment_by_token(
 @router.put(
     "/appointments/{token}/modifier",
     response_model=AppointmentModifyResponse,
-    summary="Modifier le créneau d'un RDV",
+    summary="Modifier un RDV (créneau et/ou infos patient)",
     description=(
-        "Change le créneau d'un rendez-vous existant. "
-        "L'ancien créneau est libéré, le nouveau est bloqué. "
+        "Modifie un rendez-vous existant. "
+        "Permet de changer le créneau ET/OU les informations du patient "
+        "(nom, prénom, téléphone, email, motif). "
+        "Tous les champs sont optionnels — seuls les champs fournis sont mis à jour. "
         "Règles : token valide, non expiré, RDV non annulé."
     )
 )
@@ -117,51 +119,60 @@ def modifier_appointment(
 ):
     rdv = get_rdv_or_raise(token, db, check_expiry=True)
 
-    # Vérifier que le nouveau créneau existe et est disponible
-    nouveau_creneau = db.query(Creneau).filter(
-        Creneau.id == payload.nouveau_creneau_id
-    ).first()
+    # ── Mise à jour des informations du patient (champs optionnels) ──
+    if payload.nom_patient is not None:
+        rdv.nom_patient = payload.nom_patient
+    if payload.prenom_patient is not None:
+        rdv.prenom_patient = payload.prenom_patient
+    if payload.telephone is not None:
+        rdv.telephone = payload.telephone
+    if payload.email_contact is not None:
+        rdv.email_contact = str(payload.email_contact)
+    if payload.motif is not None:
+        rdv.motif = payload.motif
 
-    if not nouveau_creneau:
-        raise HTTPException(
-            status_code=404,
-            detail="Nouveau créneau introuvable"
-        )
+    # ── Changement de créneau (optionnel) ──
+    if payload.nouveau_creneau_id is not None:
+        nouveau_creneau = db.query(Creneau).filter(
+            Creneau.id == payload.nouveau_creneau_id
+        ).first()
 
-    if not nouveau_creneau.disponible or nouveau_creneau.statut_affichage != "DISPONIBLE":
-        raise HTTPException(
-            status_code=409,
-            detail="Ce créneau n'est plus disponible"
-        )
+        if not nouveau_creneau:
+            raise HTTPException(
+                status_code=404,
+                detail="Nouveau créneau introuvable"
+            )
 
-    # Vérifier que le nouveau créneau appartient au même médecin
-    if nouveau_creneau.ophtalmologue_id != rdv.ophtalmologue_id:
-        raise HTTPException(
-            status_code=400,
-            detail="Le nouveau créneau doit appartenir au même médecin"
-        )
+        if not nouveau_creneau.disponible or nouveau_creneau.statut_affichage != "DISPONIBLE":
+            raise HTTPException(
+                status_code=409,
+                detail="Ce créneau n'est plus disponible"
+            )
 
-    # ── Libérer l'ancien créneau ──
-    ancien_creneau = db.query(Creneau).filter(
-        Creneau.id == rdv.creneau_id
-    ).first()
+        if nouveau_creneau.ophtalmologue_id != rdv.ophtalmologue_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Le nouveau créneau doit appartenir au même médecin"
+            )
 
-    if ancien_creneau:
-        ancien_creneau.disponible = True
-        ancien_creneau.statut_affichage = "DISPONIBLE"
+        # Libérer l'ancien créneau
+        ancien_creneau = db.query(Creneau).filter(
+            Creneau.id == rdv.creneau_id
+        ).first()
+        if ancien_creneau:
+            ancien_creneau.disponible = True
+            ancien_creneau.statut_affichage = "DISPONIBLE"
 
-    # ── Bloquer le nouveau créneau ──
-    nouveau_creneau.disponible = False
-    nouveau_creneau.statut_affichage = "COMPLET"
+        # Bloquer le nouveau créneau
+        nouveau_creneau.disponible = False
+        nouveau_creneau.statut_affichage = "COMPLET"
 
-    # ── Mettre à jour le RDV ──
-    rdv.creneau_id = nouveau_creneau.id
+        # Mettre à jour le créneau du RDV et recalculer l'expiration
+        rdv.creneau_id = nouveau_creneau.id
+        nouveau_rdv_datetime = datetime.combine(nouveau_creneau.date, nouveau_creneau.heure_debut)
+        rdv.token_expires_at = nouveau_rdv_datetime - timedelta(hours=24)
+
     rdv.statut = "EN_ATTENTE"
-
-    # Recalculer l'expiration du token (24h avant le nouveau créneau)
-    nouveau_rdv_datetime = datetime.combine(nouveau_creneau.date, nouveau_creneau.heure_debut)
-    rdv.token_expires_at = nouveau_rdv_datetime - timedelta(hours=24)
-
     db.commit()
     db.refresh(rdv)
 

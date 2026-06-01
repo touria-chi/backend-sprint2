@@ -96,7 +96,19 @@ class AppointmentResponse(BaseModel):
 
 
 class AppointmentModify(BaseModel):
-    nouveau_creneau_id: str
+    nouveau_creneau_id: Optional[str] = None
+    nom_patient: Optional[str] = None
+    prenom_patient: Optional[str] = None
+    telephone: Optional[str] = None
+    email_contact: Optional[EmailStr] = None
+    motif: Optional[str] = None
+
+    @field_validator("nom_patient", "prenom_patient", "telephone", mode="before")
+    @classmethod
+    def non_vide(cls, v):
+        if v is not None and not str(v).strip():
+            raise ValueError("Ce champ ne peut pas être vide")
+        return v.strip() if v is not None else v
 
 
 class AppointmentModifyResponse(AppointmentResponse):

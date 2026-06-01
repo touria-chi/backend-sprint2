@@ -122,7 +122,6 @@ class AnnulationResponse(BaseModel):
     statut: str
 
 
-# Alias utilisé par gestion_rdv.py
 AppointmentDetail = AppointmentResponse
 
 
@@ -164,6 +163,10 @@ class SecretaryAppointmentUpdate(BaseModel):
     statut: Optional[str] = None
     motif: Optional[str] = None
     notes_secretaire: Optional[str] = None
+    nom_patient: Optional[str] = None      
+    prenom_patient: Optional[str] = None   
+    telephone: Optional[str] = None         
+    email_contact: Optional[str] = None     
 
 
 class SecretaryAppointmentCancel(BaseModel):

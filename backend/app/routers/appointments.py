@@ -194,7 +194,7 @@ def create_appointment(
     db.commit()
     db.refresh(rdv)
 
-    # ── Envoi email de confirmation avec liens modifier/annuler ──
+    # Envoi email de confirmation avec liens modifier/annuler
     try:
         from app.models import User, CabinetMedical
         medecin = db.query(User).filter(User.id == rdv.ophtalmologue_id).first()

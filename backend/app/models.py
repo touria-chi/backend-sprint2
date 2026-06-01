@@ -97,7 +97,7 @@ class UserCreate(BaseModel):
     password: str
     role: str
     specialite: Optional[str] = None
-    cabinet_id: Optional[str] = None   # ← ajouter
+    cabinet_id: Optional[str] = None   
 
 
 class UserOut(BaseModel):
@@ -118,10 +118,10 @@ class UserUpdate(BaseModel):
     password: Optional[str] = None
     role: Optional[str] = None
     specialite: Optional[str] = None
-    cabinet_id: Optional[str] = None  # ← FIX : était absent
+    cabinet_id: Optional[str] = None  
 
 # =====================================================
-# SPRINT 2 — AGENDA NUMÉRIQUE
+# AGENDA NUMÉRIQUE
 # =====================================================
 
 class PlageHoraire(Base):

@@ -140,6 +140,18 @@ def update_cabinet_appointment(
     if payload.notes_secretaire is not None:
         rdv.notes_secretaire = payload.notes_secretaire
 
+    if payload.nom_patient is not None:
+        rdv.nom_patient = payload.nom_patient
+
+    if payload.prenom_patient is not None:
+        rdv.prenom_patient = payload.prenom_patient
+
+    if payload.telephone is not None:
+        rdv.telephone = payload.telephone
+
+    if payload.email_contact is not None:
+        rdv.email_contact = payload.email_contact
+
     nouveau_creneau = ancien_creneau
     if payload.nouveau_creneau_id and payload.nouveau_creneau_id != rdv.creneau_id:
         if rdv.statut == "ANNULE":

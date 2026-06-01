@@ -1,12 +1,3 @@
-# app/routers/gestion_rdv.py
-# ═══════════════════════════════════════════════════════
-# MEMBRE 2 — APIs Annulation & Modification
-# Endpoints :
-#   GET    /agenda/appointments/{token}
-#   PUT    /agenda/appointments/{token}/modifier
-#   DELETE /agenda/appointments/{token}/annuler
-# ═══════════════════════════════════════════════════════
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
@@ -24,11 +15,7 @@ from app.utils.email import send_modification_email, send_cancellation_email
 router = APIRouter(prefix="/agenda", tags=["Gestion Rendez-vous"])
 
 
-# ─────────────────────────────────────────────────────
-# Fonction utilitaire : récupérer un RDV par token
-# et appliquer les règles communes
-# ─────────────────────────────────────────────────────
-
+# Fonction utilitaire : récupérer un RDV par token et appliquer les règles communes
 def get_rdv_or_raise(token: str, db: Session, check_expiry: bool = True) -> RendezVous:
     """
     Cherche un RDV par cancel_token OU token_modification.
@@ -48,14 +35,14 @@ def get_rdv_or_raise(token: str, db: Session, check_expiry: bool = True) -> Rend
             detail="Aucun rendez-vous trouvé pour ce token"
         )
 
-    # ❌ RDV déjà annulé
+    # RDV déjà annulé
     if rdv.statut == "ANNULE":
         raise HTTPException(
             status_code=409,
             detail="Ce rendez-vous est déjà annulé"
         )
 
-    # ❌ Token expiré
+    # Token expiré
     if check_expiry and rdv.token_expires_at and datetime.utcnow() > rdv.token_expires_at:
         raise HTTPException(
             status_code=410,
@@ -64,10 +51,6 @@ def get_rdv_or_raise(token: str, db: Session, check_expiry: bool = True) -> Rend
 
     return rdv
 
-
-# ─────────────────────────────────────────────────────
-# GET /agenda/appointments/{token}
-# ─────────────────────────────────────────────────────
 
 @router.get(
     "/appointments/{token}",
@@ -83,8 +66,7 @@ def get_appointment_by_token(
     token: str,
     db: Session = Depends(get_db)
 ):
-    # GET : on ne vérifie pas l'expiry pour que le patient
-    # puisse quand même voir son RDV même si les liens sont expirés
+    # on ne vérifie pas l'expiry pour que le patient puisse quand même voir son RDV même si les liens sont expirés
     rdv = get_rdv_or_raise(token, db, check_expiry=False)
     creneau = db.query(Creneau).filter(Creneau.id == rdv.creneau_id).first()
 
@@ -94,11 +76,6 @@ def get_appointment_by_token(
         response.heure_debut = creneau.heure_debut
         response.heure_fin = creneau.heure_fin
     return response
-
-
-# ─────────────────────────────────────────────────────
-# PUT /agenda/appointments/{token}/modifier
-# ─────────────────────────────────────────────────────
 
 @router.put(
     "/appointments/{token}/modifier",
@@ -119,7 +96,7 @@ def modifier_appointment(
 ):
     rdv = get_rdv_or_raise(token, db, check_expiry=True)
 
-    # ── Mise à jour des informations du patient (champs optionnels) ──
+    # Mise à jour des informations du patient (champs optionnels) 
     if payload.nom_patient is not None:
         rdv.nom_patient = payload.nom_patient
     if payload.prenom_patient is not None:
@@ -131,7 +108,7 @@ def modifier_appointment(
     if payload.motif is not None:
         rdv.motif = payload.motif
 
-    # ── Changement de créneau (optionnel) ──
+    # Changement de créneau (optionnel)
     if payload.nouveau_creneau_id is not None:
         nouveau_creneau = db.query(Creneau).filter(
             Creneau.id == payload.nouveau_creneau_id
@@ -176,7 +153,7 @@ def modifier_appointment(
     db.commit()
     db.refresh(rdv)
 
-    # ── Envoi email de modification ──
+    # Envoi email de modification
     try:
         from app.models import User, CabinetMedical
         medecin = db.query(User).filter(User.id == rdv.ophtalmologue_id).first()
@@ -204,10 +181,6 @@ def modifier_appointment(
     return rdv
 
 
-# ─────────────────────────────────────────────────────
-# DELETE /agenda/appointments/{token}/annuler
-# ─────────────────────────────────────────────────────
-
 @router.delete(
     "/appointments/{token}/annuler",
     response_model=AnnulationResponse,
@@ -224,7 +197,7 @@ def annuler_appointment(
 ):
     rdv = get_rdv_or_raise(token, db, check_expiry=True)
 
-    # ❌ Règle métier : annulation moins de 24h avant le RDV refusée
+    # annulation moins de 24h avant le RDV refusée
     creneau = db.query(Creneau).filter(Creneau.id == rdv.creneau_id).first()
     if creneau:
         rdv_datetime = datetime.combine(creneau.date, creneau.heure_debut)
@@ -234,16 +207,16 @@ def annuler_appointment(
                 detail="Annulation impossible : le rendez-vous est dans moins de 24h. Veuillez appeler le cabinet."
             )
 
-        # ── Libérer le créneau ──
+        # Libérer le créneau
         creneau.disponible = True
         creneau.statut_affichage = "DISPONIBLE"
 
-    # ── Marquer le RDV comme annulé ──
+    # Marquer le RDV comme annulé
     rdv.statut = "ANNULE"
 
     db.commit()
 
-    # ── Envoi email d'annulation ──
+    # Envoi email d'annulation
     try:
         from app.models import User, CabinetMedical
         medecin = db.query(User).filter(User.id == rdv.ophtalmologue_id).first()

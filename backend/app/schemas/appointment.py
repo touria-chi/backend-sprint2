@@ -122,3 +122,37 @@ class AppointmentDetailResponse(AppointmentResponse):
     class Config:
         from_attributes = True
         populate_by_name = True
+
+
+class SecretaryAppointmentOut(BaseModel):
+    id: str
+    creneau_id: str
+    ophtalmologue_id: str
+    cabinet_id: Optional[str] = None
+    nom_patient: Optional[str] = None
+    prenom_patient: Optional[str] = None
+    telephone: Optional[str] = None
+    email_contact: Optional[str] = None
+    statut: str
+    source: str
+    motif: Optional[str] = None
+    notes_secretaire: Optional[str] = None
+    token_expires_at: Optional[datetime] = None
+    created_at: datetime
+    date: DateType
+    heure_debut: TimeType
+    heure_fin: TimeType
+    medecin_nom: str
+    creneau_statut: str
+    creneau_disponible: bool
+
+
+class SecretaryAppointmentUpdate(BaseModel):
+    nouveau_creneau_id: Optional[str] = None
+    statut: Optional[str] = None
+    motif: Optional[str] = None
+    notes_secretaire: Optional[str] = None
+
+
+class SecretaryAppointmentCancel(BaseModel):
+    notes_secretaire: Optional[str] = None

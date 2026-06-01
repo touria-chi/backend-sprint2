@@ -9,7 +9,7 @@ class CabinetCreate(BaseModel):
 
 
 class CabinetOut(BaseModel):
-    id: int   
+    id: str
     nom: str
     adresse: str
     telephone: str

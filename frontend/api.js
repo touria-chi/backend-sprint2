@@ -167,3 +167,29 @@ export const secretaryAppointmentsAPI = {
       body: JSON.stringify({ notes_secretaire }),
     }),
 };
+
+// ─── Plages horaires (ophtalmologue) ──────────────────────────
+export const plagesAPI = {
+  getMyPlages: () =>
+    fetch(`${BASE_URL}/agenda/my-plages`, { headers: getHeaders() }).then((r) => r.json()),
+
+  create: (data) =>
+    fetch(`${BASE_URL}/agenda/my-plages`, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    }).then((r) => r.json()),
+
+  update: (id, data) =>
+    fetch(`${BASE_URL}/agenda/my-plages/${id}`, {
+      method: "PUT",
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    }).then((r) => r.json()),
+
+  delete: (id) =>
+    fetch(`${BASE_URL}/agenda/my-plages/${id}`, {
+      method: "DELETE",
+      headers: getHeaders(),
+    }).then((r) => r.json()),
+};

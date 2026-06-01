@@ -10,13 +10,48 @@ from app.models import Creneau, RendezVous, PlageHoraire
 from app.schemas.appointment import (
     AppointmentCreate,
     AppointmentResponse,
+    AppointmentDetailResponse,
+    AppointmentModify,
     SlotResponse,
     PlageHoraireCreate,
     PlageHoraireOut,
 )
 from app.utils.slots import get_available_slots
+from sqlalchemy import or_
 
 router = APIRouter(prefix="/agenda", tags=["Agenda numérique"])
+patient_router = APIRouter(prefix="/appointments", tags=["Rendez-vous patient"])
+
+
+def _find_rdv_by_token(db: Session, token: str) -> RendezVous | None:
+    return db.query(RendezVous).filter(
+        or_(
+            RendezVous.cancel_token == token,
+            RendezVous.token_modification == token,
+            RendezVous.id == token,
+        )
+    ).first()
+
+
+def _rdv_to_detail(rdv: RendezVous, creneau: Creneau | None) -> AppointmentDetailResponse:
+    return AppointmentDetailResponse(
+        id=rdv.id,
+        creneau_id=rdv.creneau_id,
+        ophtalmologue_id=rdv.ophtalmologue_id,
+        nom_patient=rdv.nom_patient,
+        prenom_patient=rdv.prenom_patient,
+        email_contact=rdv.email_contact,
+        telephone=rdv.telephone,
+        statut=rdv.statut,
+        source=rdv.source,
+        cancel_token=rdv.cancel_token,
+        token_modification=rdv.token_modification,
+        token_expires_at=rdv.token_expires_at,
+        created_at=rdv.created_at,
+        rdv_date=creneau.date if creneau else None,
+        heure_debut=creneau.heure_debut if creneau else None,
+        heure_fin=creneau.heure_fin if creneau else None,
+    )
 
 @router.post(
     "/plages-horaires",
@@ -195,3 +230,83 @@ def create_appointment(
     db.refresh(rdv)
 
     return rdv
+
+
+@patient_router.get(
+    "/{token}",
+    response_model=AppointmentDetailResponse,
+    summary="Consulter un rendez-vous via token",
+)
+def get_appointment_by_token(token: str, db: Session = Depends(get_db)):
+    rdv = _find_rdv_by_token(db, token)
+    if not rdv:
+        raise HTTPException(status_code=404, detail="Rendez-vous introuvable")
+    creneau = db.query(Creneau).filter(Creneau.id == rdv.creneau_id).first()
+    return _rdv_to_detail(rdv, creneau)
+
+
+@patient_router.put(
+    "/{token}/modifier",
+    response_model=AppointmentDetailResponse,
+    summary="Modifier le créneau d'un rendez-vous",
+)
+def modify_appointment(
+    token: str,
+    payload: AppointmentModify,
+    db: Session = Depends(get_db),
+):
+    rdv = _find_rdv_by_token(db, token)
+    if not rdv:
+        raise HTTPException(status_code=404, detail="Rendez-vous introuvable")
+
+    if rdv.statut == "ANNULE":
+        raise HTTPException(status_code=409, detail="Ce rendez-vous est annulé")
+
+    nouveau_creneau = db.query(Creneau).filter(
+        Creneau.id == payload.creneau_id,
+        Creneau.ophtalmologue_id == rdv.ophtalmologue_id,
+    ).first()
+
+    if not nouveau_creneau:
+        raise HTTPException(status_code=404, detail="Créneau introuvable")
+
+    if not nouveau_creneau.disponible or nouveau_creneau.statut_affichage != "DISPONIBLE":
+        raise HTTPException(status_code=409, detail="Ce créneau n'est plus disponible")
+
+    ancien_creneau = db.query(Creneau).filter(Creneau.id == rdv.creneau_id).first()
+    if ancien_creneau:
+        ancien_creneau.disponible = True
+        ancien_creneau.statut_affichage = "DISPONIBLE"
+
+    rdv.creneau_id = payload.creneau_id
+    rdv.statut = "REPORTE"
+
+    nouveau_creneau.disponible = False
+    nouveau_creneau.statut_affichage = "COMPLET"
+
+    db.commit()
+    db.refresh(rdv)
+    return _rdv_to_detail(rdv, nouveau_creneau)
+
+
+@patient_router.delete(
+    "/{token}/annuler",
+    summary="Annuler un rendez-vous",
+)
+def cancel_appointment(token: str, db: Session = Depends(get_db)):
+    rdv = _find_rdv_by_token(db, token)
+    if not rdv:
+        raise HTTPException(status_code=404, detail="Rendez-vous introuvable")
+
+    if rdv.statut == "ANNULE":
+        raise HTTPException(status_code=409, detail="Ce rendez-vous est déjà annulé")
+
+    creneau = db.query(Creneau).filter(Creneau.id == rdv.creneau_id).first()
+    if creneau:
+        creneau.disponible = True
+        creneau.statut_affichage = "DISPONIBLE"
+
+    rdv.statut = "ANNULE"
+    db.commit()
+
+    return {"message": "Rendez-vous annulé avec succès"}

@@ -9,7 +9,7 @@ class CabinetCreate(BaseModel):
 
 
 class CabinetOut(BaseModel):
-    id: str
+    id: int   
     nom: str
     adresse: str
     telephone: str
@@ -17,3 +17,7 @@ class CabinetOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+
+        

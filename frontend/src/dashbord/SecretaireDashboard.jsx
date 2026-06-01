@@ -19,6 +19,10 @@ const EMPTY_EDIT = {
   statut: "",
   motif: "",
   notes_secretaire: "",
+  nom_patient: "",
+  prenom_patient: "",
+  telephone: "",
+  email_contact: "",
 };
 
 const EMPTY_BOOKING = {
@@ -191,6 +195,10 @@ export default function SecretaireDashboard() {
       statut: rdv.statut || "",
       motif: rdv.motif || "",
       notes_secretaire: rdv.notes_secretaire || "",
+      nom_patient: rdv.nom_patient || "",
+      prenom_patient: rdv.prenom_patient || "",
+      telephone: rdv.telephone || "",
+      email_contact: rdv.email_contact || "",
     });
   };
 
@@ -281,8 +289,12 @@ export default function SecretaireDashboard() {
 
     const payload = {
       statut: editForm.statut || null,
-      motif: editForm.motif,
-      notes_secretaire: editForm.notes_secretaire,
+      motif: editForm.motif || null,
+      notes_secretaire: editForm.notes_secretaire || null,
+      nom_patient: editForm.nom_patient.trim() || null,
+      prenom_patient: editForm.prenom_patient.trim() || null,
+      telephone: editForm.telephone.trim() || null,
+      email_contact: editForm.email_contact.trim() || null,
     };
 
     try {
@@ -505,44 +517,95 @@ export default function SecretaireDashboard() {
         </section>
       </main>
 
+      {/* ── Modal Modifier ── */}
       <Modal isOpen={!!editTarget} onClose={() => setEditTarget(null)} title="Modifier le rendez-vous">
         <form onSubmit={handleUpdate} className="space-y-4">
           {formError && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{formError}</div>}
 
+          {/* Informations patient */}
           <div>
-            <label className="mb-1 block text-sm font-semibold text-[#4f5d57]">Statut</label>
-            <select
-              name="statut"
-              value={editForm.statut}
-              onChange={handleEditChange}
-              className="w-full rounded-lg border border-[#cfd8d3] px-3 py-2 text-sm outline-none focus:border-[#2f4f4f]"
-            >
-              <option value="EN_ATTENTE">En attente</option>
-              <option value="ACTIF">Actif</option>
-              <option value="ATTEINT">Atteint</option>
-              <option value="ANNULE">Annulé</option>
-            </select>
+            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[#66736e]">Informations patient</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-[#4f5d57]">Nom</label>
+                <input
+                  name="nom_patient"
+                  value={editForm.nom_patient}
+                  onChange={handleEditChange}
+                  className="w-full rounded-lg border border-[#cfd8d3] px-3 py-2 text-sm outline-none focus:border-[#2f4f4f]"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-[#4f5d57]">Prénom</label>
+                <input
+                  name="prenom_patient"
+                  value={editForm.prenom_patient}
+                  onChange={handleEditChange}
+                  className="w-full rounded-lg border border-[#cfd8d3] px-3 py-2 text-sm outline-none focus:border-[#2f4f4f]"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-[#4f5d57]">Téléphone</label>
+                <input
+                  name="telephone"
+                  value={editForm.telephone}
+                  onChange={handleEditChange}
+                  className="w-full rounded-lg border border-[#cfd8d3] px-3 py-2 text-sm outline-none focus:border-[#2f4f4f]"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-[#4f5d57]">Email</label>
+                <input
+                  type="email"
+                  name="email_contact"
+                  value={editForm.email_contact}
+                  onChange={handleEditChange}
+                  className="w-full rounded-lg border border-[#cfd8d3] px-3 py-2 text-sm outline-none focus:border-[#2f4f4f]"
+                />
+              </div>
+            </div>
           </div>
 
+          {/* Informations RDV */}
           <div>
-            <label className="mb-1 block text-sm font-semibold text-[#4f5d57]">Motif</label>
-            <input
-              name="motif"
-              value={editForm.motif}
-              onChange={handleEditChange}
-              className="w-full rounded-lg border border-[#cfd8d3] px-3 py-2 text-sm outline-none focus:border-[#2f4f4f]"
-            />
-          </div>
+            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[#66736e]">Informations RDV</p>
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-[#4f5d57]">Statut</label>
+                <select
+                  name="statut"
+                  value={editForm.statut}
+                  onChange={handleEditChange}
+                  className="w-full rounded-lg border border-[#cfd8d3] px-3 py-2 text-sm outline-none focus:border-[#2f4f4f]"
+                >
+                  <option value="EN_ATTENTE">En attente</option>
+                  <option value="ACTIF">Actif</option>
+                  <option value="ATTEINT">Atteint</option>
+                  <option value="ANNULE">Annulé</option>
+                </select>
+              </div>
 
-          <div>
-            <label className="mb-1 block text-sm font-semibold text-[#4f5d57]">Note secrétaire</label>
-            <textarea
-              name="notes_secretaire"
-              value={editForm.notes_secretaire}
-              onChange={handleEditChange}
-              rows={3}
-              className="w-full rounded-lg border border-[#cfd8d3] px-3 py-2 text-sm outline-none focus:border-[#2f4f4f]"
-            />
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-[#4f5d57]">Motif</label>
+                <input
+                  name="motif"
+                  value={editForm.motif}
+                  onChange={handleEditChange}
+                  className="w-full rounded-lg border border-[#cfd8d3] px-3 py-2 text-sm outline-none focus:border-[#2f4f4f]"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-[#4f5d57]">Note secrétaire</label>
+                <textarea
+                  name="notes_secretaire"
+                  value={editForm.notes_secretaire}
+                  onChange={handleEditChange}
+                  rows={3}
+                  className="w-full rounded-lg border border-[#cfd8d3] px-3 py-2 text-sm outline-none focus:border-[#2f4f4f]"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-3">
@@ -557,6 +620,7 @@ export default function SecretaireDashboard() {
         </form>
       </Modal>
 
+      {/* ── Modal Nouveau RDV ── */}
       <Modal isOpen={bookingOpen} onClose={() => setBookingOpen(false)} title="Nouveau rendez-vous">
         <form onSubmit={handleCreateBooking} className="space-y-4">
           {bookingError && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{bookingError}</div>}
@@ -698,6 +762,7 @@ export default function SecretaireDashboard() {
         </form>
       </Modal>
 
+      {/* ── Modal Annuler ── */}
       <Modal isOpen={!!cancelTarget} onClose={() => setCancelTarget(null)} title="Annuler le rendez-vous">
         <div className="space-y-4">
           {formError && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{formError}</div>}
